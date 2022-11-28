@@ -1,0 +1,11 @@
+build:
+  gpu: true
+  python_version: "3.8"
+  python_packages:
+    - "pyannote.audio==2.1.1"
+    # - "torch==1.11.0"
+    # - "torchvision==0.12.0"
+    # - "torchaudio==0.11.0"
+  system_packages:
+    - "libsndfile1"
+predict: "predict.py:Predictor"
