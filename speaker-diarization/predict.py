@@ -30,7 +30,7 @@ class Predictor(BasePredictor):
         use_auth_token=auth_token
       )
 
-      if audio.suffix is not "wav":
+      if audio.suffix != "wav":
         raise "Input file must be wav"
 
       diarization = self.pipeline(
