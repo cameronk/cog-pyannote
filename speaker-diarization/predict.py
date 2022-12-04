@@ -17,7 +17,7 @@ class TurnWithSpeaker(BaseModel):
 class Predictor(BasePredictor):
     def setup(self):
       """Load the model into memory to make running multiple predictions efficient"""
-      self.pipeline = Pipeline.from_pretrained("config.yml")
+      self.pipeline = Pipeline.from_pretrained("config.yaml")
       logging.info("[cog/speaker-diarization] loaded pipeline")
       pass
 
