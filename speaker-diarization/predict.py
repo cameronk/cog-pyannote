@@ -6,7 +6,7 @@ from pyannote.audio import Pipeline
 import torch
 import logging
 
-logging.basicConfig(filename="predict.log", level=logging.DEBUG)
+logging.basicConfig(filename="predict.log", filemode="w", level=logging.DEBUG)
 
 class TurnWithSpeaker(BaseModel):
   start : int
@@ -36,46 +36,51 @@ class Predictor(BasePredictor):
       min_speakers: int = Input(description="Lower bound on number of speakers", default=None),
       max_speakers: int = Input(description="Upper bound on number of speakers", default=None),
     ) -> List[TurnWithSpeaker]:
-      logging.info("[cog/speaker-diarization] running prediction")
-      
-      # Check device
-      device_count = torch.cuda.device_count()
-      logging.info("[cog/speaker-diarization] available gpus %s" % device_count)
+      try:
+        logging.info("[cog/speaker-diarization] running prediction")
+        
+        # Check device
+        device_count = torch.cuda.device_count()
+        logging.info("[cog/speaker-diarization] available gpus %s" % device_count)
 
-      if device_count == 0: raise Exception("GPU unavailable")
+        if device_count == 0: raise Exception("GPU unavailable, device count is %s" % device_count)
 
-      # https://github.com/pyannote/pyannote-audio/blob/f700d6ea8dedd42e7c822c3b44b46a952e62a585/pyannote/audio/core/pipeline.py#L46
-      self.pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization@2.1",
-        use_auth_token=auth_token
-      )
+        # https://github.com/pyannote/pyannote-audio/blob/f700d6ea8dedd42e7c822c3b44b46a952e62a585/pyannote/audio/core/pipeline.py#L46
+        self.pipeline = Pipeline.from_pretrained(
+          "pyannote/speaker-diarization@2.1",
+          use_auth_token=auth_token
+        )
 
-      logging.info("[cog/speaker-diarization] loaded pipeline")
+        logging.info("[cog/speaker-diarization] loaded pipeline")
 
-      if audio.suffix != ".wav":
-        raise Exception("Expected extension .wav, got %s" % audio.suffix)
+        if audio.suffix != ".wav":
+          raise Exception("Expected extension .wav, got %s" % audio.suffix)
 
-      # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
-      diarization = self.pipeline(
-        audio,
-        num_speakers=num_speakers,
-        min_speakers=min_speakers,
-        max_speakers=max_speakers,
-        hook=self.hook
-      )
+        # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
+        diarization = self.pipeline(
+          audio,
+          num_speakers=num_speakers,
+          min_speakers=min_speakers,
+          max_speakers=max_speakers,
+          hook=self.hook
+        )
 
-      logging.info("[cog/speaker-diarization] diarized audio")
+        logging.info("[cog/speaker-diarization] diarized audio")
 
-      results = [
-        ({
-          "start": turn.start,
-          "end": turn.end,
-          "speaker": speaker
-        }) for turn, _, speaker in diarization.itertracks(yield_label=True)
-      ]
+        results = [
+          ({
+            "start": turn.start,
+            "end": turn.end,
+            "speaker": speaker
+          }) for turn, _, speaker in diarization.itertracks(yield_label=True)
+        ]
 
-      logging.info("[cog/speaker-diarization] found %s results" % len(results))
+        logging.info("[cog/speaker-diarization] found %s results" % len(results))
 
-      return results
+        return results
+      except Exception as e:
+        logging.exception("[cog/speaker-diarization] error")
+        logging.exception(e)
+        raise e
 
 
