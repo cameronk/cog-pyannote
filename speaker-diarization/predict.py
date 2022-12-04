@@ -53,7 +53,7 @@ class Predictor(BasePredictor):
       logging.info("[cog/speaker-diarization] loaded pipeline")
 
       if audio.suffix != "wav":
-        raise "Input file must be wav"
+        raise "Expected extension .wav, got %s" % audio.suffix
 
       # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
       diarization = self.pipeline(
