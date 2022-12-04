@@ -42,7 +42,7 @@ class Predictor(BasePredictor):
       device_count = torch.cuda.device_count()
       logging.info("[cog/speaker-diarization] available gpus %s" % device_count)
 
-      if device_count == 0: raise "GPU not available"
+      if device_count == 0: raise Exception("GPU unavailable")
 
       # https://github.com/pyannote/pyannote-audio/blob/f700d6ea8dedd42e7c822c3b44b46a952e62a585/pyannote/audio/core/pipeline.py#L46
       self.pipeline = Pipeline.from_pretrained(
@@ -53,7 +53,7 @@ class Predictor(BasePredictor):
       logging.info("[cog/speaker-diarization] loaded pipeline")
 
       if audio.suffix != "wav":
-        raise "Expected extension .wav, got %s" % audio.suffix
+        raise Exception("Expected extension .wav, got %s" % audio.suffix)
 
       # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
       diarization = self.pipeline(
