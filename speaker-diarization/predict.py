@@ -21,10 +21,6 @@ class Predictor(BasePredictor):
 
     def hook(self, name : str, step_artefact : Any, file : Any) -> None:
       logging.info("[cog/speaker-diarization] hook %s %s" % (name, step_artefact))
-
-      if name == "on_predict":
-        logging.info("[cog/speaker-diarization] on_predict %s" % step_artefact)
-          
       pass
 
     # Define the arguments and types the model takes as input
@@ -68,11 +64,11 @@ class Predictor(BasePredictor):
         logging.info("[cog/speaker-diarization] diarized audio")
 
         results = [
-          ({
-            "start": turn.start,
-            "end": turn.end,
-            "speaker": speaker
-          }) for turn, _, speaker in diarization.itertracks(yield_label=True)
+          TurnWithSpeaker(
+            start=turn.start,
+            end=turn.end,
+            speaker=speaker
+          ) for turn, _, speaker in diarization.itertracks(yield_label=True)
         ]
 
         logging.info("[cog/speaker-diarization] found %s results" % len(results))
