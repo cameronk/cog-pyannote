@@ -6,7 +6,7 @@ from pyannote.audio import Pipeline
 import torch
 import logging
 
-logging.basicConfig(filename="predict.log", encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename="predict.log", level=logging.DEBUG)
 
 class TurnWithSpeaker(BaseModel):
   start : int
