@@ -10,8 +10,4 @@ build:
   system_packages:
     - "ffmpeg"
     - "libsndfile1"
-  run:
-    - echo "Downloading config.yaml and pytorch_model.bin"
-    - curl "https://github.com/cameronk/cog-pyannote/blob/diarize/speaker-diarization/model/2022-12-03/config.yaml?raw=true" --output config.yaml
-    - curl "https://github.com/cameronk/cog-pyannote/blob/diarize/speaker-diarization/model/2022-12-03/pytorch_model.bin?raw=true" --output pytorch_model.bin
 predict: "predict.py:Predictor"
