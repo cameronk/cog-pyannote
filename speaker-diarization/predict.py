@@ -16,8 +16,10 @@ class TurnWithSpeaker(BaseModel):
 # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L56
 class Predictor(BasePredictor):
     def setup(self):
-        """Load the model into memory to make running multiple predictions efficient"""
-        pass
+      """Load the model into memory to make running multiple predictions efficient"""
+      self.pipeline = Pipeline.from_pretrained("config.yml")
+      logging.info("[cog/speaker-diarization] loaded pipeline")
+      pass
 
     def hook(self, name : str, step_artefact : Any, file : Any) -> None:
       logging.info("[cog/speaker-diarization] hook %s %s" % (name, step_artefact))
@@ -27,10 +29,10 @@ class Predictor(BasePredictor):
     def predict(
       self,
       audio: Path = Input(description="Audio to diarize"),
-      auth_token: str = Input(description="Huggingface auth_token used to load pretrained model"),
       num_speakers: int = Input(description="Number of speakers if known in advance", default=None),
       min_speakers: int = Input(description="Lower bound on number of speakers", default=None),
       max_speakers: int = Input(description="Upper bound on number of speakers", default=None),
+      # auth_token: str = Input(description="Huggingface auth_token used to load pretrained model"),
     ) -> List[TurnWithSpeaker]:
       try:
         logging.info("[cog/speaker-diarization] running prediction")
@@ -41,13 +43,12 @@ class Predictor(BasePredictor):
 
         if device_count == 0: raise Exception("GPU unavailable, device count is %s" % device_count)
 
+        # FIXME: this technique can be used to accept a HuggingFace auth token
         # https://github.com/pyannote/pyannote-audio/blob/f700d6ea8dedd42e7c822c3b44b46a952e62a585/pyannote/audio/core/pipeline.py#L46
-        self.pipeline = Pipeline.from_pretrained(
-          "pyannote/speaker-diarization@2.1",
-          use_auth_token=auth_token
-        )
-
-        logging.info("[cog/speaker-diarization] loaded pipeline")
+        # self.pipeline = Pipeline.from_pretrained(
+        #   "pyannote/speaker-diarization@2.1",
+        #   use_auth_token=auth_token
+        # )
 
         if audio.suffix != ".wav":
           raise Exception("Expected extension .wav, got %s" % audio.suffix)
