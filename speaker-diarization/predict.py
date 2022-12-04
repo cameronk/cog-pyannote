@@ -9,9 +9,9 @@ import logging
 logging.basicConfig(filename="predict.log", filemode="w", level=logging.DEBUG)
 
 class TurnWithSpeaker(BaseModel):
-  start : int
-  end : int
-  speaker: int
+  start : float
+  end : float
+  speaker: str
 
 # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L56
 class Predictor(BasePredictor):
