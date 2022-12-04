@@ -6,6 +6,8 @@ from pyannote.audio import Pipeline
 import torch
 import logging
 
+logging.basicConfig(filename="predict.log", encoding='utf-8', level=logging.DEBUG)
+
 class TurnWithSpeaker(BaseModel):
   start : int
   end : int
@@ -16,6 +18,14 @@ class Predictor(BasePredictor):
     def setup(self):
         """Load the model into memory to make running multiple predictions efficient"""
         pass
+
+    def hook(self, name : str, step_artefact : Any, file : Any) -> None:
+      logging.info("[cog/speaker-diarization] hook %s %s" % (name, step_artefact))
+
+      if name == "on_predict":
+        logging.info("[cog/speaker-diarization] on_predict %s" % step_artefact)
+          
+      pass
 
     # Define the arguments and types the model takes as input
     def predict(
@@ -29,17 +39,15 @@ class Predictor(BasePredictor):
       logging.info("[cog/speaker-diarization] running prediction")
       
       # Check device
-      device = "cuda:0" if torch.cuda.is_available() else "cpu"
-      logging.info("[cog/speaker-diarization] using device: %s" % device)
+      device_count = torch.cuda.device_count()
+      logging.info("[cog/speaker-diarization] available gpus %s" % device_count)
 
-      if device != "cuda:0":
-        raise "GPU not available"
+      if device_count == 0: raise "GPU not available"
 
       # https://github.com/pyannote/pyannote-audio/blob/f700d6ea8dedd42e7c822c3b44b46a952e62a585/pyannote/audio/core/pipeline.py#L46
       self.pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization@2.1",
-        use_auth_token=auth_token,
-        device=device
+        use_auth_token=auth_token
       )
 
       logging.info("[cog/speaker-diarization] loaded pipeline")
@@ -47,11 +55,13 @@ class Predictor(BasePredictor):
       if audio.suffix != "wav":
         raise "Input file must be wav"
 
+      # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
       diarization = self.pipeline(
         audio,
         num_speakers=num_speakers,
         min_speakers=min_speakers,
-        max_speakers=max_speakers
+        max_speakers=max_speakers,
+        hook=self.hook
       )
 
       logging.info("[cog/speaker-diarization] diarized audio")
