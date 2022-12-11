@@ -5,8 +5,7 @@ from cog import BasePredictor, Input, Path, BaseModel
 from pyannote.audio import Pipeline
 import torch
 import logging
-
-logging.basicConfig(filename="predict.log", filemode="w", level=logging.DEBUG)
+import ffmpeg
 
 class TurnWithSpeaker(BaseModel):
     start : float
@@ -20,59 +19,61 @@ class Predictor(BasePredictor):
         
         # Check device
         device_count = torch.cuda.device_count()
-        logging.info("[cog/speaker-diarization] available gpus %s" % device_count)
+        logging.info("Available GPUs: %s" % device_count)
         if device_count == 0: 
             raise Exception("GPU unavailable, device count is %s" % device_count)
 
         # Load model
         self.pipeline = Pipeline.from_pretrained("config.yaml")
-        logging.info("[cog/speaker-diarization] completed setup")
+        logging.info("Completed setup")
         pass
 
     def hook(self, name : str, step_artefact : Any, file : Any) -> None:
-        logging.info("[cog/speaker-diarization] hook %s %s" % (name, step_artefact))
+        """Called during pyannote pipeline execution"""
+        logging.info("Hook: %s %s" % (name, step_artefact))
         pass
 
-    # Define the arguments and types the model takes as input
     def predict(
         self,
-        audio: Path = Input(description="Audio to diarize"),
+        audio: Path = Input(description="Audio to diarize. Accepts any audio file type convertible to .wav by ffmpeg."),
         num_speakers: int = Input(description="Number of speakers if known in advance", default=None),
         min_speakers: int = Input(description="Lower bound on number of speakers", default=None),
         max_speakers: int = Input(description="Upper bound on number of speakers", default=None),
-        # auth_token: str = Input(description="Huggingface auth_token used to load pretrained model"),
     ) -> List[TurnWithSpeaker]:
-        try:
-            logging.info("[cog/speaker-diarization] running prediction")
+        # Convert to wav if necessary
+        audio_path = audio
 
-            if audio.suffix != ".wav":
-                raise Exception("Expected extension .wav, got %s" % audio.suffix)
+        if audio.suffix != ".wav":
+            logging.info("Converting audio to wav")
+            audio_path = audio.with_suffix(".wav")
+            try: 
+                ffmpeg.input(audio).output(audio_path).run()
+            except Exception as e:
+                logging.exception(e)
+                raise e
 
-            # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
-            diarization = self.pipeline(
-                audio,
-                num_speakers=num_speakers,
-                min_speakers=min_speakers,
-                max_speakers=max_speakers,
-                hook=self.hook
-            )
+        # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
+        diarization = self.pipeline(
+            audio_path,
+            num_speakers=num_speakers,
+            min_speakers=min_speakers,
+            max_speakers=max_speakers,
+            hook=self.hook
+        )
 
-            logging.info("[cog/speaker-diarization] diarized audio")
+        logging.info("Diarization complete")
 
-            results = [
-                TurnWithSpeaker(
-                    start=turn.start,
-                    end=turn.end,
-                    speaker=speaker
-                ) for turn, _, speaker in diarization.itertracks(yield_label=True)
-            ]
+        results = [
+            # https://github.com/pyannote/pyannote-core/blob/b5df979d1215012260717d35a48113195131ddad/pyannote/core/annotation.py#L265
+            TurnWithSpeaker(
+                start=segment.start,
+                end=segment.end,
+                speaker=speaker
+            ) for segment, _, speaker in diarization.itertracks(yield_label=True)
+        ]
 
-            logging.info("[cog/speaker-diarization] found %s results" % len(results))
+        logging.info("Found %s results" % len(results))
 
-            return results
-        except Exception as e:
-          logging.exception("[cog/speaker-diarization] error")
-          logging.exception(e)
-          raise e
+        return results
 
 
