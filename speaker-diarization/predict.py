@@ -9,75 +9,70 @@ import logging
 logging.basicConfig(filename="predict.log", filemode="w", level=logging.DEBUG)
 
 class TurnWithSpeaker(BaseModel):
-  start : float
-  end : float
-  speaker: str
+    start : float
+    end : float
+    speaker: str
 
 # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L56
 class Predictor(BasePredictor):
     def setup(self):
-      """Load the model into memory to make running multiple predictions efficient"""
-      self.pipeline = Pipeline.from_pretrained("config.yaml")
-      logging.info("[cog/speaker-diarization] loaded pipeline")
-      pass
-
-    def hook(self, name : str, step_artefact : Any, file : Any) -> None:
-      logging.info("[cog/speaker-diarization] hook %s %s" % (name, step_artefact))
-      pass
-
-    # Define the arguments and types the model takes as input
-    def predict(
-      self,
-      audio: Path = Input(description="Audio to diarize"),
-      num_speakers: int = Input(description="Number of speakers if known in advance", default=None),
-      min_speakers: int = Input(description="Lower bound on number of speakers", default=None),
-      max_speakers: int = Input(description="Upper bound on number of speakers", default=None),
-      # auth_token: str = Input(description="Huggingface auth_token used to load pretrained model"),
-    ) -> List[TurnWithSpeaker]:
-      try:
-        logging.info("[cog/speaker-diarization] running prediction")
+        """Load the model into memory to make running multiple predictions efficient"""
         
         # Check device
         device_count = torch.cuda.device_count()
         logging.info("[cog/speaker-diarization] available gpus %s" % device_count)
+        if device_count == 0: 
+            raise Exception("GPU unavailable, device count is %s" % device_count)
 
-        if device_count == 0: raise Exception("GPU unavailable, device count is %s" % device_count)
+        # Load model
+        self.pipeline = Pipeline.from_pretrained("config.yaml")
+        logging.info("[cog/speaker-diarization] completed setup")
+        pass
 
-        # FIXME: this technique can be used to accept a HuggingFace auth token
-        # https://github.com/pyannote/pyannote-audio/blob/f700d6ea8dedd42e7c822c3b44b46a952e62a585/pyannote/audio/core/pipeline.py#L46
-        # self.pipeline = Pipeline.from_pretrained(
-        #   "pyannote/speaker-diarization@2.1",
-        #   use_auth_token=auth_token
-        # )
+    def hook(self, name : str, step_artefact : Any, file : Any) -> None:
+        logging.info("[cog/speaker-diarization] hook %s %s" % (name, step_artefact))
+        pass
 
-        if audio.suffix != ".wav":
-          raise Exception("Expected extension .wav, got %s" % audio.suffix)
+    # Define the arguments and types the model takes as input
+    def predict(
+        self,
+        audio: Path = Input(description="Audio to diarize"),
+        num_speakers: int = Input(description="Number of speakers if known in advance", default=None),
+        min_speakers: int = Input(description="Lower bound on number of speakers", default=None),
+        max_speakers: int = Input(description="Upper bound on number of speakers", default=None),
+        # auth_token: str = Input(description="Huggingface auth_token used to load pretrained model"),
+    ) -> List[TurnWithSpeaker]:
+        try:
+            logging.info("[cog/speaker-diarization] running prediction")
 
-        # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
-        diarization = self.pipeline(
-          audio,
-          num_speakers=num_speakers,
-          min_speakers=min_speakers,
-          max_speakers=max_speakers,
-          hook=self.hook
-        )
+            if audio.suffix != ".wav":
+                raise Exception("Expected extension .wav, got %s" % audio.suffix)
 
-        logging.info("[cog/speaker-diarization] diarized audio")
+            # https://github.com/pyannote/pyannote-audio/blob/develop/pyannote/audio/pipelines/speaker_diarization.py#L422
+            diarization = self.pipeline(
+                audio,
+                num_speakers=num_speakers,
+                min_speakers=min_speakers,
+                max_speakers=max_speakers,
+                hook=self.hook
+            )
 
-        results = [
-          TurnWithSpeaker(
-            start=turn.start,
-            end=turn.end,
-            speaker=speaker
-          ) for turn, _, speaker in diarization.itertracks(yield_label=True)
-        ]
+            logging.info("[cog/speaker-diarization] diarized audio")
 
-        logging.info("[cog/speaker-diarization] found %s results" % len(results))
+            results = [
+                TurnWithSpeaker(
+                    start=turn.start,
+                    end=turn.end,
+                    speaker=speaker
+                ) for turn, _, speaker in diarization.itertracks(yield_label=True)
+            ]
 
-        return results
-      except Exception as e:
-        logging.exception("[cog/speaker-diarization] error")
-        logging.exception(e)
-        raise e
+            logging.info("[cog/speaker-diarization] found %s results" % len(results))
+
+            return results
+        except Exception as e:
+          logging.exception("[cog/speaker-diarization] error")
+          logging.exception(e)
+          raise e
 
 
