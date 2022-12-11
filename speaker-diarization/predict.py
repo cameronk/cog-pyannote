@@ -47,7 +47,7 @@ class Predictor(BasePredictor):
             logging.info("Converting audio to wav")
             audio_path = audio.with_suffix(".wav")
             try: 
-                ffmpeg.input(audio).output(audio_path).run()
+                ffmpeg.input(str(audio)).output(str(audio_path)).run()
             except Exception as e:
                 logging.exception(e)
                 raise e
