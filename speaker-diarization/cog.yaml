@@ -12,3 +12,4 @@ build:
     - "ffmpeg"
     - "libsndfile1"
 predict: "predict.py:Predictor"
+image: "r8.im/cameronk/speaker-diarization"
