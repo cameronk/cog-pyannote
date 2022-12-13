@@ -26,7 +26,7 @@ class Predictor(BasePredictor):
             logging.warn("GPU unavailable!")
 
         # Load model
-        self.model = Model.from_pretrained("config.yaml")
+        self.model = Model.from_pretrained("pytorch_model.bin")
         logging.info("Completed setup")
         pass
       
@@ -34,10 +34,11 @@ class Predictor(BasePredictor):
         self,
         audio: Path = Input(description="Audio to perform voice activity detection on. Accepts any audio file type convertible to .wav by ffmpeg."),
         task: str = Input(description="Segmentation task to perform", default="vad"),
-        onset: float = Input(description="Onset activation threshold", default=0.5),
-        offset: float = Input(description="Offset activation threshold", default=0.5),
-        min_duration_on: float = Input(description="Remove speech regions shorter than that many seconds.", default=0.0),
-        min_duration_off: float = Input(description="Fill non-speech regions shorter than that many seconds.", default=0.0)
+        # Hyperparameters
+        onset: float = Input(description="Onset activation threshold", default=0.8104268538848918),
+        offset: float = Input(description="Offset activation threshold", default=0.4806866463041527),
+        min_duration_on: float = Input(description="Remove speech regions shorter than that many seconds.", default=0.05537587440407595),
+        min_duration_off: float = Input(description="Fill non-speech regions shorter than that many seconds.", default=0.09791355693027545)
     ) -> AnnotationJson:
         if task not in AVAILABLE_TASKS:
             raise Exception("Task %s is not available. Available tasks are: %s" % (task, AVAILABLE_TASKS))
