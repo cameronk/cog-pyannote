@@ -11,8 +11,9 @@ import ffmpeg
 class AnnotationJson(BaseModel):
     pyannote: str
     uri: str
-    modality: str
     content: List[dict]
+    task: str
+    parameters: dict
 
 AVAILABLE_TASKS = ["vad", "osd"]
 
