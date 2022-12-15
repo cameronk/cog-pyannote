@@ -82,7 +82,7 @@ class Predictor(BasePredictor):
         # {
         #   pyannote: "",
         #   uri: "",
-        #   modality: "",
+        #   modality?: "",
         #   content: [{ segment: { start: 0, end: 1 }, track: "", label: "" }]
         # }
         return data
